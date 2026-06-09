@@ -83,8 +83,9 @@ class TelemetryEvent:
     metadata: dict[str, Any] | None = None
 
 
-# Global consent flag - can be set via environment variable
-_user_consent: bool = True
+# Global consent flag — opt-in only, defaults to False
+# Enable via env var: ABLETON_MCP_TELEMETRY_CONSENT=true
+_user_consent: bool = False
 
 
 def set_telemetry_consent(consent: bool):
@@ -111,12 +112,21 @@ class TelemetryCollector:
         # Check if disabled via environment variables
         if self._is_disabled():
             self.config.enabled = False
-            logger.warning("Telemetry disabled via environment variable")
 
-        # Check for consent via environment variable
+        # Telemetry is opt-in. Only enable rich data collection when explicitly requested.
         if os.environ.get("ABLETON_MCP_TELEMETRY_CONSENT", "").lower() in ("true", "1", "yes", "on"):
             set_telemetry_consent(True)
-            logger.info("Telemetry consent enabled via environment variable")
+
+        # Print a one-time notice so users always know telemetry status
+        if self.config.enabled:
+            print(
+                "\n[AbletonMCP] Usage telemetry is active. Tool names, duration, and "
+                "success/failure are sent to the developer. Set DISABLE_TELEMETRY=true "
+                "to opt out, or ABLETON_MCP_TELEMETRY_CONSENT=true to also share "
+                "prompts and MIDI data.\n",
+                file=sys.stderr,
+                flush=True,
+            )
 
         # Generate or load customer UUID
         self._customer_uuid: str = self._get_or_create_uuid()

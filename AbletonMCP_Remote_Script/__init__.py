@@ -17,7 +17,8 @@ except ImportError:
 
 # Constants for socket communication
 DEFAULT_PORT = 9877
-HOST = "0.0.0.0"
+HOST = "127.0.0.1"  # localhost only — not exposed to the network
+MAX_BUFFER_SIZE = 10 * 1024 * 1024  # 10 MB — prevents unbounded buffer growth
 
 def create_instance(c_instance):
     """Create and return the AbletonMCP script instance"""
@@ -155,7 +156,12 @@ class AbletonMCP(ControlSurface):
                     except AttributeError:
                         # Python 2: data is already string
                         buffer += data
-                    
+
+                    # Guard against unbounded memory growth from malformed/oversized payloads
+                    if len(buffer) > MAX_BUFFER_SIZE:
+                        self.log_message("Buffer exceeded max size, closing connection")
+                        break
+
                     try:
                         # Try to parse command from buffer
                         command = json.loads(buffer)  # Removed decode('utf-8')
