@@ -239,7 +239,35 @@ class AbletonMCP(ControlSurface):
                                  "start_playback", "stop_playback", "load_browser_item",
                                  # Arrangement view – must run on the main thread
                                  "switch_to_arrangement_view", "set_current_song_time",
-                                 "duplicate_session_clip_to_arrangement"]:
+                                 "duplicate_session_clip_to_arrangement",
+                                 # Track management
+                                 "create_audio_track", "delete_track", "duplicate_track", "create_return_track",
+                                 # Track mixer controls
+                                 "set_track_volume", "set_track_pan", "set_track_mute",
+                                 "set_track_solo", "set_track_arm", "set_track_color",
+                                 # Device control
+                                 "set_device_parameter",
+                                 # Clip operations
+                                 "delete_clip", "delete_notes_from_clip", "set_clip_loop",
+                                 "set_clip_pitch", "set_clip_gain", "set_clip_warp_mode",
+                                 "set_clip_signature", "duplicate_clip_in_session",
+                                 # Scene operations
+                                 "fire_scene", "create_scene", "delete_scene", "duplicate_scene",
+                                 "set_scene_name", "set_scene_tempo",
+                                 # Transport & recording
+                                 "set_time_signature", "set_loop_points", "continue_playback",
+                                 "set_metronome", "set_record_mode", "set_session_record",
+                                 "capture_midi", "undo", "redo", "tap_tempo", "jump_to_cue",
+                                 "stop_all_clips",
+                                 # Routing
+                                 "set_track_input_routing", "set_track_output_routing", "set_track_monitoring",
+                                 "set_send_amount",
+                                 # Master & return tracks
+                                 "set_master_volume", "set_master_pan", "set_crossfader",
+                                 "set_return_track_name", "set_return_track_volume",
+                                 "set_return_track_pan", "set_return_track_mute",
+                                 # Advanced
+                                 "set_rack_macro", "set_plugin_preset", "set_song_scale"]:
                 # Use a thread-safe approach with a response queue
                 response_queue = queue.Queue()
                 
@@ -309,6 +337,155 @@ class AbletonMCP(ControlSurface):
                             destination_time = params.get("destination_time", 0.0)
                             result = self._duplicate_session_clip_to_arrangement(
                                 track_index, clip_index, destination_time)
+                        # ── Track management ──────────────────────────────────────
+                        elif command_type == "create_audio_track":
+                            result = self._create_audio_track(params.get("index", -1))
+                        elif command_type == "delete_track":
+                            result = self._delete_track(params.get("track_index", 0))
+                        elif command_type == "duplicate_track":
+                            result = self._duplicate_track(params.get("track_index", 0))
+                        elif command_type == "create_return_track":
+                            result = self._create_return_track()
+                        # ── Track mixer controls ───────────────────────────────────
+                        elif command_type == "set_track_volume":
+                            result = self._set_track_volume(params.get("track_index", 0), params.get("volume", 0.85))
+                        elif command_type == "set_track_pan":
+                            result = self._set_track_pan(params.get("track_index", 0), params.get("pan", 0.0))
+                        elif command_type == "set_track_mute":
+                            result = self._set_track_mute(params.get("track_index", 0), params.get("mute", False))
+                        elif command_type == "set_track_solo":
+                            result = self._set_track_solo(params.get("track_index", 0), params.get("solo", False))
+                        elif command_type == "set_track_arm":
+                            result = self._set_track_arm(params.get("track_index", 0), params.get("arm", False))
+                        elif command_type == "set_track_color":
+                            result = self._set_track_color(params.get("track_index", 0), params.get("color", 0))
+                        # ── Device control ────────────────────────────────────────
+                        elif command_type == "set_device_parameter":
+                            result = self._set_device_parameter(
+                                params.get("track_index", 0), params.get("device_index", 0),
+                                params.get("parameter_index", 0), params.get("value", 0.0))
+                        # ── Clip operations ───────────────────────────────────────
+                        elif command_type == "delete_clip":
+                            result = self._delete_clip(params.get("track_index", 0), params.get("clip_index", 0))
+                        elif command_type == "delete_notes_from_clip":
+                            result = self._delete_notes_from_clip(
+                                params.get("track_index", 0), params.get("clip_index", 0),
+                                params.get("from_time", 0.0), params.get("time_span", 1.0),
+                                params.get("from_pitch", 0), params.get("pitch_span", 128))
+                        elif command_type == "set_clip_loop":
+                            result = self._set_clip_loop(
+                                params.get("track_index", 0), params.get("clip_index", 0),
+                                params.get("looping", True), params.get("loop_start", None),
+                                params.get("loop_end", None))
+                        elif command_type == "set_clip_pitch":
+                            result = self._set_clip_pitch(
+                                params.get("track_index", 0), params.get("clip_index", 0),
+                                params.get("coarse", None), params.get("fine", None))
+                        elif command_type == "set_clip_gain":
+                            result = self._set_clip_gain(
+                                params.get("track_index", 0), params.get("clip_index", 0),
+                                params.get("gain", 1.0))
+                        elif command_type == "set_clip_warp_mode":
+                            result = self._set_clip_warp_mode(
+                                params.get("track_index", 0), params.get("clip_index", 0),
+                                params.get("warp_mode", None), params.get("warping", None))
+                        elif command_type == "set_clip_signature":
+                            result = self._set_clip_signature(
+                                params.get("track_index", 0), params.get("clip_index", 0),
+                                params.get("numerator", 4), params.get("denominator", 4))
+                        elif command_type == "duplicate_clip_in_session":
+                            result = self._duplicate_clip_in_session(
+                                params.get("track_index", 0),
+                                params.get("src_clip_index", 0), params.get("dst_clip_index", 1))
+                        # ── Scene operations ──────────────────────────────────────
+                        elif command_type == "fire_scene":
+                            result = self._fire_scene(params.get("scene_index", 0))
+                        elif command_type == "create_scene":
+                            result = self._create_scene(params.get("index", -1))
+                        elif command_type == "delete_scene":
+                            result = self._delete_scene(params.get("scene_index", 0))
+                        elif command_type == "duplicate_scene":
+                            result = self._duplicate_scene(params.get("scene_index", 0))
+                        elif command_type == "set_scene_name":
+                            result = self._set_scene_name(params.get("scene_index", 0), params.get("name", ""))
+                        elif command_type == "set_scene_tempo":
+                            result = self._set_scene_tempo(
+                                params.get("scene_index", 0), params.get("tempo", 120.0),
+                                params.get("enabled", True))
+                        # ── Transport & recording ─────────────────────────────────
+                        elif command_type == "set_time_signature":
+                            result = self._set_time_signature(params.get("numerator", 4), params.get("denominator", 4))
+                        elif command_type == "set_loop_points":
+                            result = self._set_loop_points(
+                                params.get("loop_on", True),
+                                params.get("loop_start", None), params.get("loop_length", None))
+                        elif command_type == "continue_playback":
+                            result = self._continue_playback()
+                        elif command_type == "set_metronome":
+                            result = self._set_metronome(params.get("enabled", True))
+                        elif command_type == "set_record_mode":
+                            result = self._set_record_mode(params.get("enabled", False))
+                        elif command_type == "set_session_record":
+                            result = self._set_session_record(params.get("enabled", False))
+                        elif command_type == "capture_midi":
+                            result = self._capture_midi()
+                        elif command_type == "undo":
+                            result = self._undo()
+                        elif command_type == "redo":
+                            result = self._redo()
+                        elif command_type == "tap_tempo":
+                            result = self._tap_tempo()
+                        elif command_type == "jump_to_cue":
+                            result = self._jump_to_cue(params.get("direction", "next"))
+                        elif command_type == "stop_all_clips":
+                            result = self._stop_all_clips(params.get("quantized", True))
+                        # ── Routing ───────────────────────────────────────────────
+                        elif command_type == "set_track_input_routing":
+                            result = self._set_track_input_routing(
+                                params.get("track_index", 0), params.get("routing", ""))
+                        elif command_type == "set_track_output_routing":
+                            result = self._set_track_output_routing(
+                                params.get("track_index", 0), params.get("routing", ""))
+                        elif command_type == "set_track_monitoring":
+                            result = self._set_track_monitoring(
+                                params.get("track_index", 0), params.get("monitoring_state", 1))
+                        elif command_type == "set_send_amount":
+                            result = self._set_send_amount(
+                                params.get("track_index", 0),
+                                params.get("send_index", 0), params.get("value", 0.0))
+                        # ── Master & return tracks ────────────────────────────────
+                        elif command_type == "set_master_volume":
+                            result = self._set_master_volume(params.get("volume", 0.85))
+                        elif command_type == "set_master_pan":
+                            result = self._set_master_pan(params.get("pan", 0.0))
+                        elif command_type == "set_crossfader":
+                            result = self._set_crossfader(params.get("value", 0.0))
+                        elif command_type == "set_return_track_name":
+                            result = self._set_return_track_name(
+                                params.get("track_index", 0), params.get("name", ""))
+                        elif command_type == "set_return_track_volume":
+                            result = self._set_return_track_volume(
+                                params.get("track_index", 0), params.get("volume", 0.85))
+                        elif command_type == "set_return_track_pan":
+                            result = self._set_return_track_pan(
+                                params.get("track_index", 0), params.get("pan", 0.0))
+                        elif command_type == "set_return_track_mute":
+                            result = self._set_return_track_mute(
+                                params.get("track_index", 0), params.get("mute", False))
+                        # ── Advanced ──────────────────────────────────────────────
+                        elif command_type == "set_rack_macro":
+                            result = self._set_rack_macro(
+                                params.get("track_index", 0), params.get("device_index", 0),
+                                params.get("macro_index", 0), params.get("value", 0.0))
+                        elif command_type == "set_plugin_preset":
+                            result = self._set_plugin_preset(
+                                params.get("track_index", 0), params.get("device_index", 0),
+                                params.get("preset_index", 0))
+                        elif command_type == "set_song_scale":
+                            result = self._set_song_scale(
+                                params.get("root_note", None),
+                                params.get("scale_name", None),
+                                params.get("scale_mode", None))
 
                         # Put the result in the queue
                         response_queue.put({"status": "success", "result": result})
@@ -362,6 +539,21 @@ class AbletonMCP(ControlSurface):
             elif command_type == "get_arrangement_clips":
                 track_index = params.get("track_index", 0)
                 response["result"] = self._get_arrangement_clips(track_index)
+            # Read-only extended commands
+            elif command_type == "get_device_parameters":
+                response["result"] = self._get_device_parameters(
+                    params.get("track_index", 0), params.get("device_index", 0))
+            elif command_type == "get_clip_notes":
+                response["result"] = self._get_clip_notes(
+                    params.get("track_index", 0), params.get("clip_index", 0))
+            elif command_type == "get_return_track_info":
+                response["result"] = self._get_return_track_info(params.get("track_index", 0))
+            elif command_type == "get_plugin_presets":
+                response["result"] = self._get_plugin_presets(
+                    params.get("track_index", 0), params.get("device_index", 0))
+            elif command_type == "get_rack_chains":
+                response["result"] = self._get_rack_chains(
+                    params.get("track_index", 0), params.get("device_index", 0))
             else:
                 response["status"] = "error"
                 response["message"] = "Unknown command: " + command_type
@@ -1194,6 +1386,721 @@ class AbletonMCP(ControlSurface):
             self.log_message(traceback.format_exc())
             raise
     
+    # ── Internal helpers ──────────────────────────────────────────────────────
+
+    def _get_track(self, track_index):
+        if track_index < 0 or track_index >= len(self._song.tracks):
+            raise IndexError("Track index out of range")
+        return self._song.tracks[track_index]
+
+    def _get_return_track(self, track_index):
+        if track_index < 0 or track_index >= len(self._song.return_tracks):
+            raise IndexError("Return track index out of range")
+        return self._song.return_tracks[track_index]
+
+    def _get_clip_slot(self, track_index, clip_index, require_clip=True):
+        track = self._get_track(track_index)
+        if clip_index < 0 or clip_index >= len(track.clip_slots):
+            raise IndexError("Clip index out of range")
+        slot = track.clip_slots[clip_index]
+        if require_clip and not slot.has_clip:
+            raise Exception("No clip in slot " + str(clip_index))
+        return slot
+
+    def _get_clip(self, track_index, clip_index):
+        return self._get_clip_slot(track_index, clip_index, require_clip=True).clip
+
+    # ── Track management ──────────────────────────────────────────────────────
+
+    def _create_audio_track(self, index):
+        try:
+            self._song.create_audio_track(index)
+            new_index = len(self._song.tracks) - 1 if index == -1 else index
+            track = self._song.tracks[new_index]
+            return {"index": new_index, "name": track.name}
+        except Exception as e:
+            self.log_message("Error creating audio track: " + str(e))
+            raise
+
+    def _delete_track(self, track_index):
+        try:
+            if track_index < 0 or track_index >= len(self._song.tracks):
+                raise IndexError("Track index out of range")
+            self._song.delete_track(track_index)
+            return {"deleted": True, "track_index": track_index}
+        except Exception as e:
+            self.log_message("Error deleting track: " + str(e))
+            raise
+
+    def _duplicate_track(self, track_index):
+        try:
+            if track_index < 0 or track_index >= len(self._song.tracks):
+                raise IndexError("Track index out of range")
+            self._song.duplicate_track(track_index)
+            return {"duplicated": True, "original_index": track_index, "new_index": track_index + 1}
+        except Exception as e:
+            self.log_message("Error duplicating track: " + str(e))
+            raise
+
+    def _create_return_track(self):
+        try:
+            self._song.create_return_track()
+            new_index = len(self._song.return_tracks) - 1
+            track = self._song.return_tracks[new_index]
+            return {"index": new_index, "name": track.name}
+        except Exception as e:
+            self.log_message("Error creating return track: " + str(e))
+            raise
+
+    # ── Track mixer controls ──────────────────────────────────────────────────
+
+    def _set_track_volume(self, track_index, volume):
+        try:
+            track = self._get_track(track_index)
+            track.mixer_device.volume.value = float(volume)
+            return {"volume": track.mixer_device.volume.value}
+        except Exception as e:
+            self.log_message("Error setting track volume: " + str(e))
+            raise
+
+    def _set_track_pan(self, track_index, pan):
+        try:
+            track = self._get_track(track_index)
+            track.mixer_device.panning.value = float(pan)
+            return {"panning": track.mixer_device.panning.value}
+        except Exception as e:
+            self.log_message("Error setting track pan: " + str(e))
+            raise
+
+    def _set_track_mute(self, track_index, mute):
+        try:
+            track = self._get_track(track_index)
+            track.mute = bool(mute)
+            return {"mute": track.mute}
+        except Exception as e:
+            self.log_message("Error setting track mute: " + str(e))
+            raise
+
+    def _set_track_solo(self, track_index, solo):
+        try:
+            track = self._get_track(track_index)
+            track.solo = bool(solo)
+            return {"solo": track.solo}
+        except Exception as e:
+            self.log_message("Error setting track solo: " + str(e))
+            raise
+
+    def _set_track_arm(self, track_index, arm):
+        try:
+            track = self._get_track(track_index)
+            if not getattr(track, 'can_be_armed', False):
+                raise Exception("Track cannot be armed")
+            track.arm = bool(arm)
+            return {"arm": track.arm}
+        except Exception as e:
+            self.log_message("Error setting track arm: " + str(e))
+            raise
+
+    def _set_track_color(self, track_index, color):
+        try:
+            track = self._get_track(track_index)
+            track.color = int(color)
+            return {"color": track.color}
+        except Exception as e:
+            self.log_message("Error setting track color: " + str(e))
+            raise
+
+    # ── Device control ────────────────────────────────────────────────────────
+
+    def _get_device_parameters(self, track_index, device_index):
+        try:
+            track = self._get_track(track_index)
+            if device_index < 0 or device_index >= len(track.devices):
+                raise IndexError("Device index out of range")
+            device = track.devices[device_index]
+            params = []
+            for i, param in enumerate(device.parameters):
+                try:
+                    value_items = list(param.value_items) if getattr(param, 'is_quantized', False) else []
+                except:
+                    value_items = []
+                params.append({
+                    "index": i,
+                    "name": param.name,
+                    "value": float(param.value),
+                    "min": float(param.min),
+                    "max": float(param.max),
+                    "default_value": float(getattr(param, 'default_value', param.min)),
+                    "is_quantized": bool(getattr(param, 'is_quantized', False)),
+                    "value_items": value_items
+                })
+            return {"device_name": device.name, "parameter_count": len(params), "parameters": params}
+        except Exception as e:
+            self.log_message("Error getting device parameters: " + str(e))
+            raise
+
+    def _set_device_parameter(self, track_index, device_index, parameter_index, value):
+        try:
+            track = self._get_track(track_index)
+            if device_index < 0 or device_index >= len(track.devices):
+                raise IndexError("Device index out of range")
+            device = track.devices[device_index]
+            if parameter_index < 0 or parameter_index >= len(device.parameters):
+                raise IndexError("Parameter index out of range")
+            param = device.parameters[parameter_index]
+            param.value = float(value)
+            return {"parameter": param.name, "value": float(param.value)}
+        except Exception as e:
+            self.log_message("Error setting device parameter: " + str(e))
+            raise
+
+    # ── Clip operations ───────────────────────────────────────────────────────
+
+    def _delete_clip(self, track_index, clip_index):
+        try:
+            slot = self._get_clip_slot(track_index, clip_index, require_clip=True)
+            slot.delete_clip()
+            return {"deleted": True}
+        except Exception as e:
+            self.log_message("Error deleting clip: " + str(e))
+            raise
+
+    def _get_clip_notes(self, track_index, clip_index):
+        try:
+            clip = self._get_clip(track_index, clip_index)
+            if not clip.is_midi_clip:
+                raise Exception("Not a MIDI clip")
+            notes = []
+            try:
+                for note in clip.get_all_notes_extended():
+                    nd = {
+                        "pitch": int(note.pitch),
+                        "start_time": float(note.start_time),
+                        "duration": float(note.duration),
+                        "velocity": float(note.velocity),
+                        "mute": bool(note.mute)
+                    }
+                    if hasattr(note, 'note_id'):
+                        nd["note_id"] = int(note.note_id)
+                    if hasattr(note, 'probability'):
+                        nd["probability"] = float(note.probability)
+                    if hasattr(note, 'velocity_deviation'):
+                        nd["velocity_deviation"] = float(note.velocity_deviation)
+                    notes.append(nd)
+            except AttributeError:
+                for note in clip.get_notes(0, 0, clip.length, 128):
+                    notes.append({
+                        "pitch": int(note[0]),
+                        "start_time": float(note[1]),
+                        "duration": float(note[2]),
+                        "velocity": float(note[3]),
+                        "mute": bool(note[4]) if len(note) > 4 else False
+                    })
+            return {"note_count": len(notes), "notes": notes}
+        except Exception as e:
+            self.log_message("Error getting clip notes: " + str(e))
+            raise
+
+    def _delete_notes_from_clip(self, track_index, clip_index, from_time, time_span, from_pitch, pitch_span):
+        try:
+            clip = self._get_clip(track_index, clip_index)
+            if not clip.is_midi_clip:
+                raise Exception("Not a MIDI clip")
+            clip.remove_notes(float(from_time), int(from_pitch), float(time_span), int(pitch_span))
+            return {"deleted": True}
+        except Exception as e:
+            self.log_message("Error deleting notes from clip: " + str(e))
+            raise
+
+    def _set_clip_loop(self, track_index, clip_index, looping, loop_start, loop_end):
+        try:
+            clip = self._get_clip(track_index, clip_index)
+            clip.looping = bool(looping)
+            if loop_start is not None:
+                clip.loop_start = float(loop_start)
+            if loop_end is not None:
+                clip.loop_end = float(loop_end)
+            return {
+                "looping": clip.looping,
+                "loop_start": clip.loop_start,
+                "loop_end": clip.loop_end
+            }
+        except Exception as e:
+            self.log_message("Error setting clip loop: " + str(e))
+            raise
+
+    def _set_clip_pitch(self, track_index, clip_index, coarse, fine):
+        try:
+            clip = self._get_clip(track_index, clip_index)
+            if not clip.is_audio_clip:
+                raise Exception("Pitch adjustment only applies to audio clips")
+            if coarse is not None:
+                clip.pitch_coarse = int(coarse)
+            if fine is not None:
+                clip.pitch_fine = float(fine)
+            return {"pitch_coarse": clip.pitch_coarse, "pitch_fine": clip.pitch_fine}
+        except Exception as e:
+            self.log_message("Error setting clip pitch: " + str(e))
+            raise
+
+    def _set_clip_gain(self, track_index, clip_index, gain):
+        try:
+            clip = self._get_clip(track_index, clip_index)
+            if not clip.is_audio_clip:
+                raise Exception("Gain only applies to audio clips")
+            clip.gain = float(gain)
+            return {"gain": float(clip.gain)}
+        except Exception as e:
+            self.log_message("Error setting clip gain: " + str(e))
+            raise
+
+    def _set_clip_warp_mode(self, track_index, clip_index, warp_mode, warping):
+        try:
+            clip = self._get_clip(track_index, clip_index)
+            if not clip.is_audio_clip:
+                raise Exception("Warp mode only applies to audio clips")
+            if warping is not None:
+                clip.warping = bool(warping)
+            if warp_mode is not None:
+                clip.warp_mode = int(warp_mode)
+            return {"warping": clip.warping, "warp_mode": clip.warp_mode}
+        except Exception as e:
+            self.log_message("Error setting clip warp mode: " + str(e))
+            raise
+
+    def _set_clip_signature(self, track_index, clip_index, numerator, denominator):
+        try:
+            clip = self._get_clip(track_index, clip_index)
+            clip.signature_numerator = int(numerator)
+            clip.signature_denominator = int(denominator)
+            return {
+                "signature_numerator": clip.signature_numerator,
+                "signature_denominator": clip.signature_denominator
+            }
+        except Exception as e:
+            self.log_message("Error setting clip signature: " + str(e))
+            raise
+
+    def _duplicate_clip_in_session(self, track_index, src_clip_index, dst_clip_index):
+        try:
+            track = self._get_track(track_index)
+            src_slot = self._get_clip_slot(track_index, src_clip_index, require_clip=True)
+            if dst_clip_index < 0 or dst_clip_index >= len(track.clip_slots):
+                raise IndexError("Destination clip index out of range")
+            dst_slot = track.clip_slots[dst_clip_index]
+            if dst_slot.has_clip:
+                raise Exception("Destination slot already has a clip")
+            src_slot.duplicate_clip_to(dst_slot)
+            return {"duplicated": True, "destination_index": dst_clip_index}
+        except Exception as e:
+            self.log_message("Error duplicating clip in session: " + str(e))
+            raise
+
+    # ── Scene operations ──────────────────────────────────────────────────────
+
+    def _fire_scene(self, scene_index):
+        try:
+            if scene_index < 0 or scene_index >= len(self._song.scenes):
+                raise IndexError("Scene index out of range")
+            self._song.scenes[scene_index].fire()
+            return {"fired": True, "scene_index": scene_index}
+        except Exception as e:
+            self.log_message("Error firing scene: " + str(e))
+            raise
+
+    def _create_scene(self, index):
+        try:
+            self._song.create_scene(index)
+            new_index = len(self._song.scenes) - 1 if index == -1 else index
+            return {"index": new_index, "name": self._song.scenes[new_index].name}
+        except Exception as e:
+            self.log_message("Error creating scene: " + str(e))
+            raise
+
+    def _delete_scene(self, scene_index):
+        try:
+            if scene_index < 0 or scene_index >= len(self._song.scenes):
+                raise IndexError("Scene index out of range")
+            self._song.delete_scene(scene_index)
+            return {"deleted": True}
+        except Exception as e:
+            self.log_message("Error deleting scene: " + str(e))
+            raise
+
+    def _duplicate_scene(self, scene_index):
+        try:
+            if scene_index < 0 or scene_index >= len(self._song.scenes):
+                raise IndexError("Scene index out of range")
+            self._song.duplicate_scene(scene_index)
+            return {"duplicated": True, "original_index": scene_index}
+        except Exception as e:
+            self.log_message("Error duplicating scene: " + str(e))
+            raise
+
+    def _set_scene_name(self, scene_index, name):
+        try:
+            if scene_index < 0 or scene_index >= len(self._song.scenes):
+                raise IndexError("Scene index out of range")
+            self._song.scenes[scene_index].name = name
+            return {"name": self._song.scenes[scene_index].name}
+        except Exception as e:
+            self.log_message("Error setting scene name: " + str(e))
+            raise
+
+    def _set_scene_tempo(self, scene_index, tempo, enabled):
+        try:
+            if scene_index < 0 or scene_index >= len(self._song.scenes):
+                raise IndexError("Scene index out of range")
+            scene = self._song.scenes[scene_index]
+            scene.tempo = float(tempo)
+            scene.tempo_enabled = bool(enabled)
+            return {"tempo": scene.tempo, "tempo_enabled": scene.tempo_enabled}
+        except Exception as e:
+            self.log_message("Error setting scene tempo: " + str(e))
+            raise
+
+    # ── Transport & recording ─────────────────────────────────────────────────
+
+    def _set_time_signature(self, numerator, denominator):
+        try:
+            self._song.signature_numerator = int(numerator)
+            self._song.signature_denominator = int(denominator)
+            return {
+                "signature_numerator": self._song.signature_numerator,
+                "signature_denominator": self._song.signature_denominator
+            }
+        except Exception as e:
+            self.log_message("Error setting time signature: " + str(e))
+            raise
+
+    def _set_loop_points(self, loop_on, loop_start, loop_length):
+        try:
+            self._song.loop = bool(loop_on)
+            if loop_start is not None:
+                self._song.loop_start = float(loop_start)
+            if loop_length is not None:
+                self._song.loop_length = float(loop_length)
+            return {
+                "loop": self._song.loop,
+                "loop_start": self._song.loop_start,
+                "loop_length": self._song.loop_length
+            }
+        except Exception as e:
+            self.log_message("Error setting loop points: " + str(e))
+            raise
+
+    def _continue_playback(self):
+        try:
+            self._song.continue_playing()
+            return {"playing": self._song.is_playing}
+        except Exception as e:
+            self.log_message("Error continuing playback: " + str(e))
+            raise
+
+    def _set_metronome(self, enabled):
+        try:
+            self._song.metronome = bool(enabled)
+            return {"metronome": self._song.metronome}
+        except Exception as e:
+            self.log_message("Error setting metronome: " + str(e))
+            raise
+
+    def _set_record_mode(self, enabled):
+        try:
+            self._song.record_mode = bool(enabled)
+            return {"record_mode": self._song.record_mode}
+        except Exception as e:
+            self.log_message("Error setting record mode: " + str(e))
+            raise
+
+    def _set_session_record(self, enabled):
+        try:
+            self._song.session_record = bool(enabled)
+            return {"session_record": self._song.session_record}
+        except Exception as e:
+            self.log_message("Error setting session record: " + str(e))
+            raise
+
+    def _capture_midi(self):
+        try:
+            if not getattr(self._song, 'can_capture_midi', True):
+                raise Exception("Cannot capture MIDI at this time")
+            self._song.capture_midi()
+            return {"captured": True}
+        except Exception as e:
+            self.log_message("Error capturing MIDI: " + str(e))
+            raise
+
+    def _undo(self):
+        try:
+            if not getattr(self._song, 'can_undo', True):
+                raise Exception("Nothing to undo")
+            self._song.undo()
+            return {"undone": True}
+        except Exception as e:
+            self.log_message("Error undoing: " + str(e))
+            raise
+
+    def _redo(self):
+        try:
+            if not getattr(self._song, 'can_redo', True):
+                raise Exception("Nothing to redo")
+            self._song.redo()
+            return {"redone": True}
+        except Exception as e:
+            self.log_message("Error redoing: " + str(e))
+            raise
+
+    def _tap_tempo(self):
+        try:
+            self._song.tap_tempo()
+            return {"tempo": self._song.tempo}
+        except Exception as e:
+            self.log_message("Error tapping tempo: " + str(e))
+            raise
+
+    def _jump_to_cue(self, direction):
+        try:
+            if direction == "next":
+                if not getattr(self._song, 'can_jump_to_next_cue', True):
+                    raise Exception("No next cue point")
+                self._song.jump_to_next_cue()
+            else:
+                if not getattr(self._song, 'can_jump_to_prev_cue', True):
+                    raise Exception("No previous cue point")
+                self._song.jump_to_prev_cue()
+            return {"jumped": True, "current_song_time": self._song.current_song_time}
+        except Exception as e:
+            self.log_message("Error jumping to cue: " + str(e))
+            raise
+
+    def _stop_all_clips(self, quantized):
+        try:
+            self._song.stop_all_clips(bool(quantized))
+            return {"stopped": True}
+        except Exception as e:
+            self.log_message("Error stopping all clips: " + str(e))
+            raise
+
+    # ── Routing ───────────────────────────────────────────────────────────────
+
+    def _set_track_input_routing(self, track_index, routing):
+        try:
+            track = self._get_track(track_index)
+            track.current_input_routing = routing
+            return {"current_input_routing": track.current_input_routing}
+        except Exception as e:
+            self.log_message("Error setting track input routing: " + str(e))
+            raise
+
+    def _set_track_output_routing(self, track_index, routing):
+        try:
+            track = self._get_track(track_index)
+            track.current_output_routing = routing
+            return {"current_output_routing": track.current_output_routing}
+        except Exception as e:
+            self.log_message("Error setting track output routing: " + str(e))
+            raise
+
+    def _set_track_monitoring(self, track_index, monitoring_state):
+        try:
+            track = self._get_track(track_index)
+            track.current_monitoring_state = int(monitoring_state)
+            return {"current_monitoring_state": track.current_monitoring_state}
+        except Exception as e:
+            self.log_message("Error setting track monitoring: " + str(e))
+            raise
+
+    def _set_send_amount(self, track_index, send_index, value):
+        try:
+            track = self._get_track(track_index)
+            sends = track.mixer_device.sends
+            if send_index < 0 or send_index >= len(sends):
+                raise IndexError("Send index out of range (track has " + str(len(sends)) + " sends)")
+            sends[send_index].value = float(value)
+            return {"send_index": send_index, "value": float(sends[send_index].value)}
+        except Exception as e:
+            self.log_message("Error setting send amount: " + str(e))
+            raise
+
+    # ── Master & return tracks ────────────────────────────────────────────────
+
+    def _set_master_volume(self, volume):
+        try:
+            self._song.master_track.mixer_device.volume.value = float(volume)
+            return {"volume": float(self._song.master_track.mixer_device.volume.value)}
+        except Exception as e:
+            self.log_message("Error setting master volume: " + str(e))
+            raise
+
+    def _set_master_pan(self, pan):
+        try:
+            self._song.master_track.mixer_device.panning.value = float(pan)
+            return {"panning": float(self._song.master_track.mixer_device.panning.value)}
+        except Exception as e:
+            self.log_message("Error setting master pan: " + str(e))
+            raise
+
+    def _set_crossfader(self, value):
+        try:
+            self._song.master_track.mixer_device.crossfader.value = float(value)
+            return {"crossfader": float(self._song.master_track.mixer_device.crossfader.value)}
+        except Exception as e:
+            self.log_message("Error setting crossfader: " + str(e))
+            raise
+
+    def _get_return_track_info(self, track_index):
+        try:
+            track = self._get_return_track(track_index)
+            devices = []
+            for i, d in enumerate(track.devices):
+                devices.append({
+                    "index": i,
+                    "name": d.name,
+                    "class_name": d.class_name,
+                    "type": self._get_device_type(d)
+                })
+            return {
+                "index": track_index,
+                "name": track.name,
+                "mute": track.mute,
+                "solo": track.solo,
+                "volume": float(track.mixer_device.volume.value),
+                "panning": float(track.mixer_device.panning.value),
+                "devices": devices
+            }
+        except Exception as e:
+            self.log_message("Error getting return track info: " + str(e))
+            raise
+
+    def _set_return_track_name(self, track_index, name):
+        try:
+            track = self._get_return_track(track_index)
+            track.name = name
+            return {"name": track.name}
+        except Exception as e:
+            self.log_message("Error setting return track name: " + str(e))
+            raise
+
+    def _set_return_track_volume(self, track_index, volume):
+        try:
+            track = self._get_return_track(track_index)
+            track.mixer_device.volume.value = float(volume)
+            return {"volume": float(track.mixer_device.volume.value)}
+        except Exception as e:
+            self.log_message("Error setting return track volume: " + str(e))
+            raise
+
+    def _set_return_track_pan(self, track_index, pan):
+        try:
+            track = self._get_return_track(track_index)
+            track.mixer_device.panning.value = float(pan)
+            return {"panning": float(track.mixer_device.panning.value)}
+        except Exception as e:
+            self.log_message("Error setting return track pan: " + str(e))
+            raise
+
+    def _set_return_track_mute(self, track_index, mute):
+        try:
+            track = self._get_return_track(track_index)
+            track.mute = bool(mute)
+            return {"mute": track.mute}
+        except Exception as e:
+            self.log_message("Error setting return track mute: " + str(e))
+            raise
+
+    # ── Advanced ──────────────────────────────────────────────────────────────
+
+    def _get_rack_chains(self, track_index, device_index):
+        try:
+            track = self._get_track(track_index)
+            if device_index < 0 or device_index >= len(track.devices):
+                raise IndexError("Device index out of range")
+            device = track.devices[device_index]
+            if not getattr(device, 'can_have_chains', False):
+                raise Exception("Device is not a rack")
+            chains = []
+            for i, chain in enumerate(device.chains):
+                chain_devices = []
+                for j, d in enumerate(chain.devices):
+                    chain_devices.append({"index": j, "name": d.name, "class_name": d.class_name})
+                chains.append({
+                    "index": i,
+                    "name": chain.name,
+                    "mute": getattr(chain, 'mute', False),
+                    "solo": getattr(chain, 'solo', False),
+                    "devices": chain_devices
+                })
+            return {"chain_count": len(chains), "chains": chains}
+        except Exception as e:
+            self.log_message("Error getting rack chains: " + str(e))
+            raise
+
+    def _set_rack_macro(self, track_index, device_index, macro_index, value):
+        try:
+            track = self._get_track(track_index)
+            if device_index < 0 or device_index >= len(track.devices):
+                raise IndexError("Device index out of range")
+            device = track.devices[device_index]
+            if not getattr(device, 'can_have_chains', False):
+                raise Exception("Device is not a rack")
+            macros = [p for p in device.parameters if "Macro" in p.name]
+            if macro_index < 0 or macro_index >= len(macros):
+                raise IndexError("Macro index out of range (rack has " + str(len(macros)) + " macros)")
+            macros[macro_index].value = float(value)
+            return {"macro_name": macros[macro_index].name, "value": float(macros[macro_index].value)}
+        except Exception as e:
+            self.log_message("Error setting rack macro: " + str(e))
+            raise
+
+    def _get_plugin_presets(self, track_index, device_index):
+        try:
+            track = self._get_track(track_index)
+            if device_index < 0 or device_index >= len(track.devices):
+                raise IndexError("Device index out of range")
+            device = track.devices[device_index]
+            if not hasattr(device, 'presets'):
+                raise Exception("Device does not have presets (not a plugin)")
+            presets = list(device.presets)
+            selected = getattr(device, 'selected_preset_index', -1)
+            return {"preset_count": len(presets), "presets": presets, "selected_preset_index": selected}
+        except Exception as e:
+            self.log_message("Error getting plugin presets: " + str(e))
+            raise
+
+    def _set_plugin_preset(self, track_index, device_index, preset_index):
+        try:
+            track = self._get_track(track_index)
+            if device_index < 0 or device_index >= len(track.devices):
+                raise IndexError("Device index out of range")
+            device = track.devices[device_index]
+            if not hasattr(device, 'selected_preset_index'):
+                raise Exception("Device does not support preset selection")
+            device.selected_preset_index = int(preset_index)
+            return {"selected_preset_index": device.selected_preset_index}
+        except Exception as e:
+            self.log_message("Error setting plugin preset: " + str(e))
+            raise
+
+    def _set_song_scale(self, root_note, scale_name, scale_mode):
+        try:
+            if not hasattr(self._song, 'root_note'):
+                raise Exception("Song key/scale requires Live 12+")
+            result = {}
+            if root_note is not None:
+                self._song.root_note = int(root_note)
+                result["root_note"] = self._song.root_note
+            if scale_name is not None:
+                self._song.scale_name = scale_name
+                result["scale_name"] = self._song.scale_name
+            if scale_mode is not None:
+                self._song.scale_mode = bool(scale_mode)
+                result["scale_mode"] = self._song.scale_mode
+            return result
+        except Exception as e:
+            self.log_message("Error setting song scale: " + str(e))
+            raise
+
     def get_browser_items_at_path(self, path):
         """
         Get browser items at a specific path.
